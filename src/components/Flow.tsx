@@ -17,6 +17,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import CustomNode from './CustomNode';
 import CustomEdge from './CustomEdge';
+import ContextMenu from './ContextMenu'; // Import the context menu
 import dagre from 'dagre';
 
 const nodeTypes = {
@@ -27,7 +28,7 @@ const edgeTypes = {
   custom: CustomEdge,
 };
 
-let nodeId = 1; // Start node ID from 1 for a clean slate
+let nodeId = 1;
 const FLOW_STORAGE_KEY = 'data-lineage-flow';
 
 const dagreGraph = new dagre.graphlib.Graph();
@@ -69,6 +70,7 @@ export default function Flow() {
   const [edges, setEdges] = useState<Edge[]>([]);
   const [copiedNodes, setCopiedNodes] = useState<Node[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [menu, setMenu] = useState<{ id: string; top: number; left: number } | null>(null); // State for context menu
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load from localStorage on initial mount
@@ -112,6 +114,7 @@ export default function Flow() {
       if (node.id === id) node.data.style = { ...node.data.style, ...newStyle };
       return node;
     }));
+    setMenu(null); // Close menu after change
   };
 
   const onEdgeLabelChange = (id: string, newLabel: string) => {
@@ -209,11 +212,29 @@ export default function Flow() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [nodes, copiedNodes]);
 
+  const onNodeContextMenu = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      event.preventDefault();
+      const pane = (event.target as HTMLElement).closest('.react-flow__pane');
+      if (!pane) return;
+      
+      const paneRect = pane.getBoundingClientRect();
+      setMenu({
+        id: node.id,
+        top: event.clientY - paneRect.top,
+        left: event.clientX - paneRect.left,
+      });
+    },
+    [setMenu]
+  );
+
+  const onPaneClick = useCallback(() => setMenu(null), [setMenu]);
+
   const nodesWithCallbacks = nodes.map((node) => ({ ...node, data: { ...node.data, onChange: onNodeLabelChange, onStyleChange: onStyleChange } }));
   const edgesWithCallbacks = edges.map((edge) => ({ ...edge, data: { ...edge.data, onChange: onEdgeLabelChange } }));
 
   if (!isInitialized) {
-    return null; // Render nothing on the server and during initial client hydration
+    return null;
   }
 
   return (
@@ -233,10 +254,13 @@ export default function Flow() {
         onConnect={onConnect}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        onPaneClick={onPaneClick}
+        onNodeContextMenu={onNodeContextMenu}
         fitView
       >
         <Controls />
         <Background />
+        {menu && <ContextMenu {...menu} onClose={() => setMenu(null)} onStyleChange={onStyleChange} />}
       </ReactFlow>
     </div>
   );
