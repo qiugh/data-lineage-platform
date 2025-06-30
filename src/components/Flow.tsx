@@ -178,6 +178,7 @@ export default function Flow() {
           alert('Invalid JSON format.');
         }
       } catch (error) {
+        console.error(error);
         alert('Error parsing JSON file.');
       }
     };
