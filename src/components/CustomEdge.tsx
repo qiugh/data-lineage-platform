@@ -14,7 +14,7 @@ interface CustomEdgeData {
 }
 
 // Helper function to truncate text
-const truncateLabel = (label: string, maxLength: number) => {
+const truncateLabel = (label: string | undefined, maxLength: number) => {
   if (!label) return '';
   if (label.length <= maxLength) {
     return label;
